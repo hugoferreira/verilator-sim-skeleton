@@ -11,4 +11,4 @@ verilated = "0.1.2"
 verilated-module = "0.1.1"
 
 [build-dependencies]
-verilator = "0.1.5"
+verilator = { version = "0.1", features = ["gen", "module"] }
