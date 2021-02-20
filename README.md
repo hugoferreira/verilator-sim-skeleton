@@ -1,4 +1,4 @@
-Just a simple verilator skeleton project fom verilog co-simulation.
+Just a simple verilator skeleton project for verilog co-simulation.
 
 ```
   $> make
