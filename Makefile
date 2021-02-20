@@ -16,7 +16,7 @@ simulator: ${SIM_FILE} ${OBJ_DIR}/V${TOP_LEVEL}__ALL.a
 	g++ -std=c++14 -I${VERILATOR_PATH}/include -I ${OBJ_DIR} \
 		${VERILATOR_PATH}/include/verilated.cpp \
 		${SIM_FILE} ${OBJ_DIR}/V${TOP_LEVEL}__ALL.a \
-		-o simulator
+		-Os -o simulator
 	
 .PHONY: clean
 clean:
