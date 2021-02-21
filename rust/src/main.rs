@@ -7,7 +7,7 @@ use std::time::Duration;
 use verilated_module::module;
 
 const WIDTH: usize = 320;
-const HEIGHT: usize = 200;
+const HEIGHT: usize = 320;
 
 #[module(top)]
 pub struct Top {
@@ -16,7 +16,11 @@ pub struct Top {
     #[port(reset)]
     pub rst_i: bool,
     #[port(output)]
-    pub count_o: [bool; 8],
+    pub hsync: bool,
+    #[port(output)]
+    pub vsync: bool,
+    #[port(output)]
+    pub rgb: [bool; 24],
 }
 
 fn tickdesign(tb: &mut Top, clocks: &mut u64) {
@@ -50,22 +54,36 @@ fn main() {
     while clocks <= 10 { tickdesign(&mut tb, &mut clocks); }
     tb.reset_toggle();
 
+    let mut hpos: u32 = 0;
+    let mut vpos: u32 = 0;
+    let mut vblank = true;
+    let mut hblank = false;
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        for i in buffer.iter_mut() {
-            tickdesign(&mut tb, &mut clocks);
+        tickdesign(&mut tb, &mut clocks);
+        tickdesign(&mut tb, &mut clocks);
 
-            let color = (u32::from(tb.count_o()) << 16) + (u32::from(tb.count_o()) << 8) + u32::from(tb.count_o());
-            *i = color;
-
-            tickdesign(&mut tb, &mut clocks);
+        if tb.vsync() != 0 && !vblank {
+            vblank = true;
+            vpos = 0;
+            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap_or_else(|e| { 
+                tb.finish();
+                panic!("{}", e); 
+            });
         }
 
-        println!("Frame {}", clocks);
+        if tb.vsync() == 0 && vblank { vblank = false; }
 
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap_or_else(|e| { 
-            tb.finish();
-            panic!("{}", e); 
-        });
+        if !vblank {
+            if tb.hsync() != 0 && !hblank { hpos = 0; hblank = true; vpos += 1; } else { hpos += 1; }
+            if tb.hsync() == 0 && hblank { hblank = false }
+
+            if !hblank {
+                buffer[(vpos * 320 + hpos) as usize] = u32::from(tb.rgb());
+            }
+        } 
+
+        println!("Frame {}", clocks);
     }
 
     // tb.trace_at(Duration::from_nanos(20 * clocks));

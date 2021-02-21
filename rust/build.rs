@@ -29,7 +29,7 @@ fn main() {
     verilator
         .with_coverage(true)
         .with_trace(true)
-        .file_with_standard("rtl/counter.v", Standard::Verilog2001)
+        .file_with_standard("rtl/hvsync_generator.v", Standard::Verilog2001)
         .file_with_standard("rtl/top.v", Standard::Verilog2001)
         .file(out_dir.join("top.cpp"))
         .build("top");
