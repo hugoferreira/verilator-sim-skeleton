@@ -13,3 +13,6 @@ minifb = "0.19.2"
 
 [build-dependencies]
 verilator = { version = "0.1", features = ["gen", "module"] }
+
+[profile.release]
+opt-level = "s"
