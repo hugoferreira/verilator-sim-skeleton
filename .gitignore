@@ -1,0 +1,4 @@
+obj_dir
+target
+*.vcd
+*.lock
