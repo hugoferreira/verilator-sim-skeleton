@@ -23,9 +23,9 @@ pub struct Top {
     pub rgb: [bool; 24],
 }
 
-fn tickdesign_by(tb: &mut Top, clocks: &mut u64, duration: u32) {
-    let targetClock = clocks + duration;
-    while (clocks <= targetClock) tickdesign(tb, clocks);
+fn tickdesign_by(tb: &mut Top, clocks: &mut u64, duration: u64) {
+    let target_clock = *clocks + duration;
+    while *clocks < target_clock { tickdesign(tb, clocks); }
 }
 
 fn tickdesign(tb: &mut Top, clocks: &mut u64) {
