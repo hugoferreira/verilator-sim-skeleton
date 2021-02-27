@@ -7,7 +7,7 @@ use std::time::Duration;
 use verilated_module::module;
 
 const WIDTH: usize = 320;
-const HEIGHT: usize = 320;
+const HEIGHT: usize = 241;
 
 #[module(top)]
 pub struct Top {
@@ -21,6 +21,11 @@ pub struct Top {
     pub vsync: bool,
     #[port(output)]
     pub rgb: [bool; 24],
+}
+
+fn tickdesign_by(tb: &mut Top, clocks: &mut u64, duration: u32) {
+    let targetClock = clocks + duration;
+    while (clocks <= targetClock) tickdesign(tb, clocks);
 }
 
 fn tickdesign(tb: &mut Top, clocks: &mut u64) {
@@ -51,25 +56,27 @@ fn main() {
     let mut clocks: u64 = 0;
 
     tb.reset_toggle();
-    while clocks <= 10 { tickdesign(&mut tb, &mut clocks); }
+    tickdesign_by(&mut tb, &mut clocks, 10);
     tb.reset_toggle();
 
     let mut hpos: u32 = 0;
     let mut vpos: u32 = 0;
+    let mut frame: u32 = 0;
     let mut vblank = true;
     let mut hblank = false;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        tickdesign(&mut tb, &mut clocks);
-        tickdesign(&mut tb, &mut clocks);
+        tickdesign_by(&mut tb, &mut clocks, 2);
 
         if tb.vsync() != 0 && !vblank {
             vblank = true;
             vpos = 0;
+            frame += 1;
             window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap_or_else(|e| { 
                 tb.finish();
                 panic!("{}", e); 
             });
+            println!("Frame {}", frame);
         }
 
         if tb.vsync() == 0 && vblank { vblank = false; }
@@ -77,13 +84,8 @@ fn main() {
         if !vblank {
             if tb.hsync() != 0 && !hblank { hpos = 0; hblank = true; vpos += 1; } else { hpos += 1; }
             if tb.hsync() == 0 && hblank { hblank = false }
-
-            if !hblank {
-                buffer[(vpos * 320 + hpos) as usize] = u32::from(tb.rgb());
-            }
+            if !hblank { buffer[(vpos * 320 + hpos) as usize] = u32::from(tb.rgb()); }
         } 
-
-        println!("Frame {}", clocks);
     }
 
     // tb.trace_at(Duration::from_nanos(20 * clocks));

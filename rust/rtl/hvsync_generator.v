@@ -11,17 +11,17 @@ module hvsync_generator(clk, reset, hsync, vsync, display_on, hpos, vpos);
   output reg [8:0] vpos;
 
   // declarations for TV-simulator 
-  
+
   // horizontal constants
-  parameter H_DISPLAY       = 256; // horizontal display width
-  parameter H_BACK          =  23; // horizontal left border (back porch)
-  parameter H_FRONT         =   7; // horizontal right border (front porch)
-  parameter H_SYNC          =  23; // horizontal sync width
+  parameter H_DISPLAY       = 320; // horizontal display width
+  parameter H_BACK          =   0; // horizontal left border (back porch)
+  parameter H_FRONT         =   0; // horizontal right border (front porch)
+  parameter H_SYNC          =   1; // horizontal sync width
   // vertical constants
   parameter V_DISPLAY       = 240; // vertical display height
-  parameter V_TOP           =   5; // vertical top border
-  parameter V_BOTTOM        =  14; // vertical bottom border
-  parameter V_SYNC          =   3; // vertical sync # lines
+  parameter V_TOP           =   0; // vertical top border
+  parameter V_BOTTOM        =   0; // vertical bottom border
+  parameter V_SYNC          =   1; // vertical sync # lines
   // derived constants
   parameter H_SYNC_START    = H_DISPLAY + H_FRONT;
   parameter H_SYNC_END      = H_DISPLAY + H_FRONT + H_SYNC - 1;
