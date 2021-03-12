@@ -27,7 +27,7 @@ fn main() {
     // Generate CPP from Verilog
     let mut verilator = Verilator::default();
     verilator
-        .with_coverage(true)
+        .with_coverage(false)
         .with_trace(true)
         .file_with_standard("rtl/hvsync_generator.v", Standard::Verilog2001)
         .file_with_standard("rtl/top.v", Standard::Verilog2001)

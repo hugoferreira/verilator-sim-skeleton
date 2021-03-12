@@ -3,11 +3,12 @@ extern crate verilated_module;
 extern crate minifb;
 
 use minifb::{Key, Window, WindowOptions};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use verilated_module::module;
 
 const WIDTH: usize = 320;
 const HEIGHT: usize = 241;
+const MAX_FPS: u32 = 30;
 
 #[module(top)]
 pub struct Top {
@@ -44,8 +45,8 @@ fn main() {
         WindowOptions::default(),
     ).unwrap_or_else(|e| { panic!("{}", e); });
 
-    // Limit to max ~60 fps update rate
-    window.limit_update_rate(Some(Duration::from_micros(16600)));
+    // Limit to max FPS update rate
+    window.limit_update_rate(Some(Duration::from_micros((1000000/MAX_FPS).into())));
 
     let mut tb = Top::default();
     tb.eval();
@@ -64,6 +65,7 @@ fn main() {
     let mut frame: u32 = 0;
     let mut vblank = true;
     let mut hblank = false;
+    let start = Instant::now();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         tickdesign_by(&mut tb, &mut clocks, 2);
@@ -76,7 +78,8 @@ fn main() {
                 tb.finish();
                 panic!("{}", e); 
             });
-            println!("Frame {}", frame);
+
+            if frame % MAX_FPS == 0 { println!("Frame {} ({:?})", frame, start.elapsed()); }
         }
 
         if tb.vsync() == 0 && vblank { vblank = false; }
