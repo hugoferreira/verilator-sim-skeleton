@@ -8,20 +8,15 @@ use verilated_module::module;
 
 const WIDTH: usize = 320;
 const HEIGHT: usize = 241;
-const MAX_FPS: u32 = 30;
+const MAX_FPS: u32 = 60;
 
 #[module(top)]
 pub struct Top {
-    #[port(clock)]
-    pub clk_i: bool,
-    #[port(reset)]
-    pub rst_i: bool,
-    #[port(output)]
-    pub hsync: bool,
-    #[port(output)]
-    pub vsync: bool,
-    #[port(output)]
-    pub rgb: [bool; 24],
+    #[port(clock)]  pub clk_i: bool,
+    #[port(reset)]  pub rst_i: bool,
+    #[port(output)] pub hsync: bool,
+    #[port(output)] pub vsync: bool,
+    #[port(output)] pub rgb: [bool; 24],
 }
 
 fn tickdesign_by(tb: &mut Top, clocks: &mut u64, duration: u64) {
@@ -36,30 +31,30 @@ fn tickdesign(tb: &mut Top, clocks: &mut u64) {
     *clocks += 1;
 }
 
+fn resetdesign(tb: &mut Top, clocks: &mut u64) {
+    *clocks = 0;
+    tb.reset_toggle();
+    tickdesign_by(tb, clocks, 10);
+    tb.reset_toggle();
+}
+
 fn main() {
+    let mut window_options = WindowOptions::default();
+    window_options.scale = minifb::Scale::X2;
+    window_options.scale_mode = minifb::ScaleMode::AspectRatioStretch;
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     let mut window = Window::new(
         "Screen (ESC to Exit)",
         WIDTH,
         HEIGHT,
-        WindowOptions::default(),
+        window_options,
     ).unwrap_or_else(|e| { panic!("{}", e); });
 
     // Limit to max FPS update rate
     window.limit_update_rate(Some(Duration::from_micros((1000000/MAX_FPS).into())));
 
     let mut tb = Top::default();
-    tb.eval();
-    tb.eval();
-
-    // tb.open_trace("counter.vcd", 99).unwrap();
-
     let mut clocks: u64 = 0;
-
-    tb.reset_toggle();
-    tickdesign_by(&mut tb, &mut clocks, 10);
-    tb.reset_toggle();
-
     let mut hpos: u32 = 0;
     let mut vpos: u32 = 0;
     let mut frame: u32 = 0;
@@ -67,6 +62,8 @@ fn main() {
     let mut hblank = false;
     let start = Instant::now();
 
+    // tb.open_trace("trace.vcd", 99).unwrap();
+    resetdesign(&mut tb, &mut clocks);
     while window.is_open() && !window.is_key_down(Key::Escape) {
         tickdesign_by(&mut tb, &mut clocks, 2);
 
