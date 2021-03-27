@@ -3,7 +3,7 @@ extern crate verilated_module;
 extern crate minifb;
 
 use minifb::{Key, Window, WindowOptions};
-use std::time::{Duration, Instant};
+use std::{sync::{Arc, Mutex, mpsc}, thread, time::{Duration, Instant}};
 use verilated_module::module;
 
 const WIDTH: usize = 320;
@@ -39,55 +39,71 @@ fn resetdesign(tb: &mut Top, clocks: &mut u64) {
 }
 
 fn main() {
+    let buffer_read = Arc::new(Mutex::new(vec![0 as u32; WIDTH * HEIGHT]));
+    let buffer_write = Arc::clone(&buffer_read);
+
+    let (tx, rx) = mpsc::sync_channel(1);
+    
+    let _simulation_thread = thread::spawn(move || {
+        let mut buffer: Vec<u32> = vec![0 as u32; WIDTH * HEIGHT];
+        let mut tb = Top::default();
+        let mut clocks: u64 = 0;
+        let mut hpos: u32 = 0;
+        let mut vpos: u32 = 0;
+        let mut frame: u32 = 0;
+        let mut vblank = true;
+        let mut hblank = false;
+
+        // tb.open_trace("trace.vcd", 99).unwrap();
+        resetdesign(&mut tb, &mut clocks);
+        let start = Instant::now();
+
+        loop {
+            tickdesign_by(&mut tb, &mut clocks, 2);
+
+            if tb.vsync() != 0 && !vblank {
+                vblank = true;
+                vpos = 0;
+                frame += 1;
+
+                buffer_write.lock().unwrap().clone_from(&buffer);
+                tx.send(1).unwrap();
+                
+                if frame % MAX_FPS == 0 { println!("Frame {} ({:?})", frame, start.elapsed()); }
+            }
+
+            if tb.vsync() == 0 && vblank { vblank = false; }
+
+            if !vblank {
+                if tb.hsync() != 0 && !hblank { hpos = 0; hblank = true; vpos += 1; } else { hpos += 1; }
+                if tb.hsync() == 0 && hblank { hblank = false }
+                if !hblank { (*buffer)[(vpos * 320 + hpos) as usize] = u32::from(tb.rgb()); }
+            }
+        }
+
+        tb.finish(); 
+    });
+
     let mut window_options = WindowOptions::default();
     window_options.scale = minifb::Scale::X2;
     window_options.scale_mode = minifb::ScaleMode::AspectRatioStretch;
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
     let mut window = Window::new(
         "Screen (ESC to Exit)",
         WIDTH,
         HEIGHT,
         window_options,
-    ).unwrap_or_else(|e| { panic!("{}", e); });
+    ).unwrap_or_else(|e| { 
+        panic!("{}", e); 
+    });
 
     // Limit to max FPS update rate
     window.limit_update_rate(Some(Duration::from_micros((1000000/MAX_FPS).into())));
 
-    let mut tb = Top::default();
-    let mut clocks: u64 = 0;
-    let mut hpos: u32 = 0;
-    let mut vpos: u32 = 0;
-    let mut frame: u32 = 0;
-    let mut vblank = true;
-    let mut hblank = false;
-    let start = Instant::now();
-
-    // tb.open_trace("trace.vcd", 99).unwrap();
-    resetdesign(&mut tb, &mut clocks);
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        tickdesign_by(&mut tb, &mut clocks, 2);
-
-        if tb.vsync() != 0 && !vblank {
-            vblank = true;
-            vpos = 0;
-            frame += 1;
-            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap_or_else(|e| { 
-                tb.finish();
-                panic!("{}", e); 
-            });
-
-            if frame % MAX_FPS == 0 { println!("Frame {} ({:?})", frame, start.elapsed()); }
-        }
-
-        if tb.vsync() == 0 && vblank { vblank = false; }
-
-        if !vblank {
-            if tb.hsync() != 0 && !hblank { hpos = 0; hblank = true; vpos += 1; } else { hpos += 1; }
-            if tb.hsync() == 0 && hblank { hblank = false }
-            if !hblank { buffer[(vpos * 320 + hpos) as usize] = u32::from(tb.rgb()); }
-        } 
+        window.update_with_buffer(&buffer_read.lock().unwrap(), WIDTH, HEIGHT).unwrap_or_else(|e| { 
+            panic!("{}", e); 
+        });
+        rx.recv().unwrap();
     }
-
-    // tb.trace_at(Duration::from_nanos(20 * clocks));
-    tb.finish();
 }
