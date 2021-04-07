@@ -6,9 +6,9 @@ use minifb::{Key, Window, WindowOptions};
 use std::{sync::{Arc, Mutex, mpsc}, thread, time::{Duration, Instant}};
 use verilated_module::module;
 
-const WIDTH: usize = 320;
-const HEIGHT: usize = 241;
-const MAX_FPS: u32 = 60;
+const WIDTH: usize = 160;
+const HEIGHT: usize = 121;
+const MAX_FPS: u32 = 25;
 
 #[module(top)]
 pub struct Top {
@@ -25,7 +25,7 @@ fn tickdesign_by(tb: &mut Top, clocks: &mut u64, duration: u64) {
 }
 
 fn tickdesign(tb: &mut Top, clocks: &mut u64) {
-    // tb.trace_at(Duration::from_nanos(10 * clocks));
+    tb.trace_at(Duration::from_nanos(10 * (*clocks)));
     tb.clock_toggle();
     tb.eval();
     *clocks += 1;
@@ -38,12 +38,12 @@ fn resetdesign(tb: &mut Top, clocks: &mut u64) {
     tb.reset_toggle();
 }
 
-fn main() {
+fn main() {    
     let buffer_read = Arc::new(Mutex::new(vec![0 as u32; WIDTH * HEIGHT]));
     let buffer_write = Arc::clone(&buffer_read);
 
     let (tx, rx) = mpsc::sync_channel(1);
-    
+
     let _simulation_thread = thread::spawn(move || {
         let mut buffer: Vec<u32> = vec![0 as u32; WIDTH * HEIGHT];
         let mut tb = Top::default();
@@ -59,7 +59,7 @@ fn main() {
         let start = Instant::now();
 
         loop {
-            tickdesign_by(&mut tb, &mut clocks, 2);
+            tickdesign_by(&mut tb, &mut clocks, 8);
 
             if tb.vsync() != 0 && !vblank {
                 vblank = true;
@@ -77,7 +77,7 @@ fn main() {
             if !vblank {
                 if tb.hsync() != 0 && !hblank { hpos = 0; hblank = true; vpos += 1; } else { hpos += 1; }
                 if tb.hsync() == 0 && hblank { hblank = false }
-                if !hblank { (*buffer)[(vpos * 320 + hpos) as usize] = u32::from(tb.rgb()); }
+                if !hblank { (*buffer)[(vpos * 160 + hpos) as usize] = u32::from(tb.rgb()); }
             }
         }
 
@@ -85,7 +85,7 @@ fn main() {
     });
 
     let mut window_options = WindowOptions::default();
-    window_options.scale = minifb::Scale::X2;
+    window_options.scale = minifb::Scale::X4;
     window_options.scale_mode = minifb::ScaleMode::AspectRatioStretch;
 
     let mut window = Window::new(
